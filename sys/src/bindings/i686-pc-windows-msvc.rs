@@ -87,11 +87,22 @@ pub const JS_DEF_ALIAS: u32 = 9;
 pub const JS_DEF_PROP_SYMBOL: u32 = 10;
 pub const JS_DEF_PROP_BOOL: u32 = 11;
 pub const QJSJIT_ABI_MAJOR: u32 = 1;
-pub const QJSJIT_ABI_MINOR: u32 = 20;
+pub const QJSJIT_ABI_MINOR: u32 = 24;
 pub const JS_JIT_FUNCTION_STRICT: u32 = 1;
 pub const JS_JIT_FRAME_STRESS_GC: u32 = 2;
 pub const JS_JIT_FRAME_SIDE_PATH_HIT: u32 = 4;
 pub const JS_JIT_HELPER_SCRATCH_SLOTS: u32 = 2;
+pub const QJSJIT_ARRAY_API_VERSION: u32 = 1;
+pub const JS_JIT_ARRAY_QUERY_LENGTH: u32 = 1;
+pub const JS_JIT_FEEDBACK_ARRAY_STORE: u32 = 64;
+pub const JS_JIT_FEEDBACK_ARRAY_LENGTH: u32 = 128;
+pub const JS_JIT_FEEDBACK_ARRAY_EXOTIC: u32 = 256;
+pub const JS_JIT_FEEDBACK_ARRAY_SLOW: u32 = 512;
+pub const JS_JIT_FEEDBACK_ARRAY_RESIZABLE: u32 = 1024;
+pub const JS_JIT_FEEDBACK_ARRAY_DETACHED: u32 = 2048;
+pub const JS_JIT_FEEDBACK_ARRAY_IMMUTABLE: u32 = 4096;
+pub const JS_JIT_FEEDBACK_ARRAY_SHARED: u32 = 8192;
+pub const JS_JIT_FEEDBACK_ARRAY_INVALID_BACKING: u32 = 16384;
 pub const JS_JIT_FEEDBACK_OVERFLOW: u32 = 1;
 pub const JS_JIT_FEEDBACK_NEGATIVE_ZERO: u32 = 2;
 pub const JS_JIT_FEEDBACK_NAN: u32 = 4;
@@ -103,6 +114,13 @@ pub const QJSJIT_HELPER_MAX_ABI_TYPES: u32 = 8;
 pub const QJSJIT_HELPER_MAX_VALUES: u32 = 4;
 pub const QJSJIT_RUNTIME_API_MAJOR: u32 = 1;
 pub const QJSJIT_RUNTIME_API_MINOR: u32 = 9;
+pub const QJSJIT_INLINE_RECOVERY_VERSION: u32 = 1;
+pub const JS_JIT_INLINE_CALL: u32 = 0;
+pub const JS_JIT_INLINE_CALL_METHOD: u32 = 1;
+pub const JS_JIT_INLINE_RESUME_INSTRUCTION: u32 = 0;
+pub const JS_JIT_INLINE_RESUME_EXCEPTION: u32 = 1;
+pub const JS_JIT_INLINE_MAX_DEPTH: u32 = 16;
+pub const JS_JIT_INLINE_MAX_BYTES: u32 = 1048576;
 pub type size_t = ::core::ffi::c_uint;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -2154,7 +2172,77 @@ pub const JSJitFeedbackKind_JS_JIT_FEEDBACK_BINARY: JSJitFeedbackKind = 2;
 pub const JSJitFeedbackKind_JS_JIT_FEEDBACK_CONVERSION: JSJitFeedbackKind = 3;
 pub const JSJitFeedbackKind_JS_JIT_FEEDBACK_BRANCH: JSJitFeedbackKind = 4;
 pub const JSJitFeedbackKind_JS_JIT_FEEDBACK_PROPERTY: JSJitFeedbackKind = 5;
+pub const JSJitFeedbackKind_JS_JIT_FEEDBACK_ARRAY: JSJitFeedbackKind = 6;
 pub type JSJitFeedbackKind = ::core::ffi::c_int;
+pub const JSJitArrayMode_JS_JIT_ARRAY_MODE_GENERIC: JSJitArrayMode = 0;
+pub const JSJitArrayMode_JS_JIT_ARRAY_MODE_PACKED: JSJitArrayMode = 1;
+pub const JSJitArrayMode_JS_JIT_ARRAY_MODE_INT32: JSJitArrayMode = 2;
+pub const JSJitArrayMode_JS_JIT_ARRAY_MODE_FLOAT64: JSJitArrayMode = 3;
+pub type JSJitArrayMode = ::core::ffi::c_int;
+pub const JSJitArrayQueryStatus_JS_JIT_ARRAY_QUERY_INVALID: JSJitArrayQueryStatus = -1;
+pub const JSJitArrayQueryStatus_JS_JIT_ARRAY_QUERY_MISS: JSJitArrayQueryStatus = 0;
+pub const JSJitArrayQueryStatus_JS_JIT_ARRAY_QUERY_OK: JSJitArrayQueryStatus = 1;
+pub type JSJitArrayQueryStatus = ::core::ffi::c_int;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct JSJitArrayMetadata {
+    pub struct_size: u32,
+    pub mode: u32,
+    pub count: u32,
+    pub reserved: u32,
+    pub data: *mut ::core::ffi::c_void,
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of JSJitArrayMetadata"][::core::mem::size_of::<JSJitArrayMetadata>() - 20usize];
+    ["Alignment of JSJitArrayMetadata"][::core::mem::align_of::<JSJitArrayMetadata>() - 4usize];
+    ["Offset of field: JSJitArrayMetadata::struct_size"]
+        [::core::mem::offset_of!(JSJitArrayMetadata, struct_size) - 0usize];
+    ["Offset of field: JSJitArrayMetadata::mode"]
+        [::core::mem::offset_of!(JSJitArrayMetadata, mode) - 4usize];
+    ["Offset of field: JSJitArrayMetadata::count"]
+        [::core::mem::offset_of!(JSJitArrayMetadata, count) - 8usize];
+    ["Offset of field: JSJitArrayMetadata::reserved"]
+        [::core::mem::offset_of!(JSJitArrayMetadata, reserved) - 12usize];
+    ["Offset of field: JSJitArrayMetadata::data"]
+        [::core::mem::offset_of!(JSJitArrayMetadata, data) - 16usize];
+};
+pub type JSJitArrayQueryFunc = ::core::option::Option<
+    unsafe extern "C" fn(
+        ctx: *mut JSContext,
+        receiver: *const JSValue,
+        expected_mode: u32,
+        flags: u32,
+        out: *mut JSJitArrayMetadata,
+    ) -> ::core::ffi::c_int,
+>;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct JSJitArrayAPI {
+    pub struct_size: u32,
+    pub version: u32,
+    pub effects: u32,
+    pub reserved: u32,
+    pub query: JSJitArrayQueryFunc,
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of JSJitArrayAPI"][::core::mem::size_of::<JSJitArrayAPI>() - 20usize];
+    ["Alignment of JSJitArrayAPI"][::core::mem::align_of::<JSJitArrayAPI>() - 4usize];
+    ["Offset of field: JSJitArrayAPI::struct_size"]
+        [::core::mem::offset_of!(JSJitArrayAPI, struct_size) - 0usize];
+    ["Offset of field: JSJitArrayAPI::version"]
+        [::core::mem::offset_of!(JSJitArrayAPI, version) - 4usize];
+    ["Offset of field: JSJitArrayAPI::effects"]
+        [::core::mem::offset_of!(JSJitArrayAPI, effects) - 8usize];
+    ["Offset of field: JSJitArrayAPI::reserved"]
+        [::core::mem::offset_of!(JSJitArrayAPI, reserved) - 12usize];
+    ["Offset of field: JSJitArrayAPI::query"]
+        [::core::mem::offset_of!(JSJitArrayAPI, query) - 16usize];
+};
+unsafe extern "C" {
+    pub fn JS_JitGetArrayAPI(version: u32) -> *const JSJitArrayAPI;
+}
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct JSJitFeedbackEvent {
@@ -3400,6 +3488,27 @@ const _: () = {
 };
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
+pub struct JSJitPropertyLayout {
+    pub struct_size: u32,
+    pub object_shape_offset: u32,
+    pub object_properties_offset: u32,
+    pub shape_generation_offset: u32,
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of JSJitPropertyLayout"][::core::mem::size_of::<JSJitPropertyLayout>() - 16usize];
+    ["Alignment of JSJitPropertyLayout"][::core::mem::align_of::<JSJitPropertyLayout>() - 4usize];
+    ["Offset of field: JSJitPropertyLayout::struct_size"]
+        [::core::mem::offset_of!(JSJitPropertyLayout, struct_size) - 0usize];
+    ["Offset of field: JSJitPropertyLayout::object_shape_offset"]
+        [::core::mem::offset_of!(JSJitPropertyLayout, object_shape_offset) - 4usize];
+    ["Offset of field: JSJitPropertyLayout::object_properties_offset"]
+        [::core::mem::offset_of!(JSJitPropertyLayout, object_properties_offset) - 8usize];
+    ["Offset of field: JSJitPropertyLayout::shape_generation_offset"]
+        [::core::mem::offset_of!(JSJitPropertyLayout, shape_generation_offset) - 12usize];
+};
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
 pub struct JSJitABIInfo {
     pub struct_size: u32,
     pub major: u16,
@@ -3424,10 +3533,12 @@ pub struct JSJitABIInfo {
     pub helper_table_fingerprint: u64,
     pub element_layout_fingerprint: u64,
     pub element_layout: JSJitElementLayout,
+    pub property_layout_fingerprint: u64,
+    pub property_layout: JSJitPropertyLayout,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of JSJitABIInfo"][::core::mem::size_of::<JSJitABIInfo>() - 232usize];
+    ["Size of JSJitABIInfo"][::core::mem::size_of::<JSJitABIInfo>() - 256usize];
     ["Alignment of JSJitABIInfo"][::core::mem::align_of::<JSJitABIInfo>() - 8usize];
     ["Offset of field: JSJitABIInfo::struct_size"]
         [::core::mem::offset_of!(JSJitABIInfo, struct_size) - 0usize];
@@ -3473,6 +3584,10 @@ const _: () = {
         [::core::mem::offset_of!(JSJitABIInfo, element_layout_fingerprint) - 136usize];
     ["Offset of field: JSJitABIInfo::element_layout"]
         [::core::mem::offset_of!(JSJitABIInfo, element_layout) - 144usize];
+    ["Offset of field: JSJitABIInfo::property_layout_fingerprint"]
+        [::core::mem::offset_of!(JSJitABIInfo, property_layout_fingerprint) - 232usize];
+    ["Offset of field: JSJitABIInfo::property_layout"]
+        [::core::mem::offset_of!(JSJitABIInfo, property_layout) - 240usize];
 };
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -3619,6 +3734,27 @@ const _: () = {
         [::core::mem::offset_of!(JSJitTraceEvent, reserved) - 7usize];
 };
 unsafe extern "C" {
+    pub fn JS_JitGetHelperCount(
+        rt: *mut JSRuntime,
+        helper_id: u32,
+        count: *mut u64,
+    ) -> ::core::ffi::c_int;
+}
+unsafe extern "C" {
+    pub fn JS_JitSetExecutionTrace(
+        rt: *mut JSRuntime,
+        events: *mut JSJitTraceEvent,
+        capacity: u32,
+    ) -> ::core::ffi::c_int;
+}
+unsafe extern "C" {
+    pub fn JS_JitGetExecutionTraceLength(
+        rt: *mut JSRuntime,
+        length: *mut u32,
+        overflowed: *mut u32,
+    ) -> ::core::ffi::c_int;
+}
+unsafe extern "C" {
     pub fn JS_SetJitBackend(
         rt: *mut JSRuntime,
         vtable: *const JSJitBackendVTable,
@@ -3649,6 +3785,88 @@ unsafe extern "C" {
 }
 unsafe extern "C" {
     pub fn JS_JitInvalidateFunction(ctx: *mut JSContext, function: JSValue) -> ::core::ffi::c_int;
+}
+unsafe extern "C" {
+    pub fn JS_JitInlineEnter(
+        caller: *mut JSJitExecFrame,
+        stack_map_id: u32,
+        call_pc: u32,
+        continuation_pc: u32,
+        call_kind: u32,
+        argc: u32,
+        callee: *mut *mut JSJitExecFrame,
+    ) -> JSJitHelperStatus;
+}
+unsafe extern "C" {
+    pub fn JS_JitInlineLeave(callee: *mut JSJitExecFrame, result_slot: u32) -> JSJitHelperStatus;
+}
+unsafe extern "C" {
+    pub fn JS_JitInlineResume(
+        callee: *mut JSJitExecFrame,
+        resume_pc: u32,
+        resume_kind: u32,
+    ) -> JSJitHelperStatus;
+}
+unsafe extern "C" {
+    pub fn JS_JitInlineCheck(frame: *mut JSJitExecFrame) -> JSJitHelperStatus;
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct JSJitInlineAPI {
+    pub struct_size: u32,
+    pub version: u32,
+    pub max_depth: u32,
+    pub max_bytes: u32,
+    pub effects: u32,
+    pub reserved: u32,
+    pub enter: ::core::option::Option<
+        unsafe extern "C" fn(
+            arg1: *mut JSJitExecFrame,
+            arg2: u32,
+            arg3: u32,
+            arg4: u32,
+            arg5: u32,
+            arg6: u32,
+            arg7: *mut *mut JSJitExecFrame,
+        ) -> JSJitHelperStatus,
+    >,
+    pub leave: ::core::option::Option<
+        unsafe extern "C" fn(arg1: *mut JSJitExecFrame, arg2: u32) -> JSJitHelperStatus,
+    >,
+    pub resume: ::core::option::Option<
+        unsafe extern "C" fn(arg1: *mut JSJitExecFrame, arg2: u32, arg3: u32) -> JSJitHelperStatus,
+    >,
+    pub check: ::core::option::Option<
+        unsafe extern "C" fn(arg1: *mut JSJitExecFrame) -> JSJitHelperStatus,
+    >,
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of JSJitInlineAPI"][::core::mem::size_of::<JSJitInlineAPI>() - 40usize];
+    ["Alignment of JSJitInlineAPI"][::core::mem::align_of::<JSJitInlineAPI>() - 4usize];
+    ["Offset of field: JSJitInlineAPI::struct_size"]
+        [::core::mem::offset_of!(JSJitInlineAPI, struct_size) - 0usize];
+    ["Offset of field: JSJitInlineAPI::version"]
+        [::core::mem::offset_of!(JSJitInlineAPI, version) - 4usize];
+    ["Offset of field: JSJitInlineAPI::max_depth"]
+        [::core::mem::offset_of!(JSJitInlineAPI, max_depth) - 8usize];
+    ["Offset of field: JSJitInlineAPI::max_bytes"]
+        [::core::mem::offset_of!(JSJitInlineAPI, max_bytes) - 12usize];
+    ["Offset of field: JSJitInlineAPI::effects"]
+        [::core::mem::offset_of!(JSJitInlineAPI, effects) - 16usize];
+    ["Offset of field: JSJitInlineAPI::reserved"]
+        [::core::mem::offset_of!(JSJitInlineAPI, reserved) - 20usize];
+    ["Offset of field: JSJitInlineAPI::enter"]
+        [::core::mem::offset_of!(JSJitInlineAPI, enter) - 24usize];
+    ["Offset of field: JSJitInlineAPI::leave"]
+        [::core::mem::offset_of!(JSJitInlineAPI, leave) - 28usize];
+    ["Offset of field: JSJitInlineAPI::resume"]
+        [::core::mem::offset_of!(JSJitInlineAPI, resume) - 32usize];
+    ["Offset of field: JSJitInlineAPI::check"]
+        [::core::mem::offset_of!(JSJitInlineAPI, check) - 36usize];
+};
+unsafe extern "C" {
+    pub fn JS_JitGetInlineAPI(version: u32) -> *const JSJitInlineAPI;
 }
 pub const __JS_ATOM_NULL: _bindgen_ty_5 = 0;
 pub const JS_ATOM_null: _bindgen_ty_5 = 1;

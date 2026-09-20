@@ -3450,7 +3450,16 @@ impl JitRuntimeBuilder {
     }
 
     /// Constructs a QuickJS runtime with an attached JIT backend.
+    ///
+    /// Targets without native execution support (32-bit x86, wasm, ...) have no
+    /// backend to attach to, and the ABI handshake with the linked runtime can
+    /// legitimately fail there even though the interpreter is fully usable. On
+    /// those targets the builder degrades to [`Self::build_interpreter`] rather
+    /// than failing; callers distinguish the two with [`JitRuntime::has_jit`].
     pub fn build(self) -> Result<JitRuntime, JitError> {
+        if !NATIVE_EXECUTION_SUPPORTED {
+            return self.build_interpreter();
+        }
         let runtime = Runtime::new()?;
         let jit = Jit::attach(&runtime, self.config)?;
         Ok(JitRuntime {

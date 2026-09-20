@@ -32,6 +32,30 @@ pub enum AbiStructure {
     ArrayApi,
 }
 
+/// Exit-kind values as the native contract defines them.
+///
+/// `bindgen` types a C enum by the target ABI's underlying integer, so the
+/// generated `JSJitExitKind_*` constants are `u32` for the mingw-generated
+/// bindings but `i32` for a native MSVC x86 generation, while
+/// `JSJitExit::kind` is `u32` on every target. The values are pinned here and
+/// asserted against the binding below, so the exit contract no longer depends
+/// on which ABI the binding file came from.
+mod exit_kind {
+    pub const DONE: u32 = 0;
+    pub const EXCEPTION: u32 = 1;
+    pub const INTERRUPT: u32 = 2;
+    pub const DEOPT: u32 = 3;
+    pub const RETRY_INTERPRETER: u32 = 4;
+}
+
+const _: () = {
+    assert!(exit_kind::DONE == qjs::JSJitExitKind_JS_JIT_EXIT_DONE as u32);
+    assert!(exit_kind::EXCEPTION == qjs::JSJitExitKind_JS_JIT_EXIT_EXCEPTION as u32);
+    assert!(exit_kind::INTERRUPT == qjs::JSJitExitKind_JS_JIT_EXIT_INTERRUPT as u32);
+    assert!(exit_kind::DEOPT == qjs::JSJitExitKind_JS_JIT_EXIT_DEOPT as u32);
+    assert!(exit_kind::RETRY_INTERPRETER == qjs::JSJitExitKind_JS_JIT_EXIT_RETRY_INTERPRETER as u32);
+};
+
 /// Constructors for the authoritative native-to-interpreter exit contract.
 pub trait JitExitExt: Sized {
     fn done() -> Self;
@@ -43,26 +67,23 @@ pub trait JitExitExt: Sized {
 
 impl JitExitExt for qjs::JSJitExit {
     fn done() -> Self {
-        new_exit(qjs::JSJitExitKind_JS_JIT_EXIT_DONE, core::ptr::null())
+        new_exit(exit_kind::DONE, core::ptr::null())
     }
 
     fn exception() -> Self {
-        new_exit(qjs::JSJitExitKind_JS_JIT_EXIT_EXCEPTION, core::ptr::null())
+        new_exit(exit_kind::EXCEPTION, core::ptr::null())
     }
 
     fn interrupt() -> Self {
-        new_exit(qjs::JSJitExitKind_JS_JIT_EXIT_INTERRUPT, core::ptr::null())
+        new_exit(exit_kind::INTERRUPT, core::ptr::null())
     }
 
     fn resume(resume_pc: *const u8) -> Self {
-        new_exit(qjs::JSJitExitKind_JS_JIT_EXIT_DEOPT, resume_pc)
+        new_exit(exit_kind::DEOPT, resume_pc)
     }
 
     fn retry_interpreter() -> Self {
-        new_exit(
-            qjs::JSJitExitKind_JS_JIT_EXIT_RETRY_INTERPRETER,
-            core::ptr::null(),
-        )
+        new_exit(exit_kind::RETRY_INTERPRETER, core::ptr::null())
     }
 }
 
@@ -964,7 +985,7 @@ fn validate_inline_api(api: &qjs::JSJitInlineAPI) -> Result<(), AbiError> {
         || api.version != qjs::QJSJIT_INLINE_RECOVERY_VERSION
         || api.max_depth != qjs::JS_JIT_INLINE_MAX_DEPTH
         || api.max_bytes != qjs::JS_JIT_INLINE_MAX_BYTES
-        || api.effects != effects
+        || i64::from(api.effects) != i64::from(effects)
         || api.reserved != 0
         || api.enter.is_none()
         || api.leave.is_none()
