@@ -40,6 +40,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   publications settle; reject compilation during the timed batch and refresh
   stale local workload checksums.
 
+- Build the runtime on `i686-pc-windows-msvc`: the JIT exit-kind values are now
+  pinned to `u32` and asserted against the binding instead of inheriting the C
+  enum's ABI-dependent signedness, and `JitRuntimeBuilder::build` degrades to
+  the interpreter on targets without native execution instead of failing its
+  ABI handshake there.
+
 ### Security
 
 ## [0.12.2] - 2026-07-27
