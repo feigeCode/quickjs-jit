@@ -48,7 +48,8 @@ fn run_until_native(source: &str, expression: &str) -> (String, rquickjs_jit::Ji
     // Sanitizer builds can take tens of seconds to drain even this bounded,
     // stable set of function compilations when the test binary runs in
     // parallel. The function identities above remain fixed while we wait.
-    let deadline = Instant::now() + Duration::from_secs(60);
+    let deadline =
+        Instant::now() + Duration::from_secs(if cfg!(rquickjs_sanitizer) { 300 } else { 60 });
     let mut result = String::new();
     while Instant::now() < deadline {
         result = context.with(|ctx| {
@@ -85,7 +86,8 @@ fn local_state_call_keeps_the_generic_native_boundary() {
         )
         .unwrap();
     });
-    let deadline = Instant::now() + Duration::from_secs(60);
+    let deadline =
+        Instant::now() + Duration::from_secs(if cfg!(rquickjs_sanitizer) { 300 } else { 60 });
     loop {
         context.with(|ctx| {
             assert_eq!(
@@ -193,7 +195,8 @@ fn suspend_stops_probes_and_resume_reuses_installed_code() {
     context
         .with(|ctx| ctx.eval::<(), _>("function hot(a){return a+1}"))
         .unwrap();
-    let deadline = Instant::now() + Duration::from_secs(10);
+    let deadline =
+        Instant::now() + Duration::from_secs(if cfg!(rquickjs_sanitizer) { 50 } else { 10 });
     while Instant::now() < deadline && jit.metrics().native_entries == 0 {
         assert_eq!(
             context.with(|ctx| ctx.eval::<i32, _>("hot(41)")).unwrap(),
@@ -269,7 +272,8 @@ fn baseline_only_direct_call_hit_skips_call_helper_and_misses_remain_exact() {
         })
         .unwrap();
 
-    let deadline = Instant::now() + Duration::from_secs(10);
+    let deadline =
+        Instant::now() + Duration::from_secs(if cfg!(rquickjs_sanitizer) { 50 } else { 10 });
     while Instant::now() < deadline {
         assert_eq!(
             context.with(|ctx| ctx.eval::<i32, _>("f(g,41)")).unwrap(),
@@ -328,7 +332,7 @@ fn baseline_only_direct_call_hit_skips_call_helper_and_misses_remain_exact() {
 }
 
 #[test]
-fn baseline_property_cache_validates_once_per_site_and_mutation_misses_exactly() {
+fn baseline_property_cache_hits_inline_and_mutation_misses_exactly() {
     let runtime = Runtime::new().unwrap();
     let jit = Jit::attach(
         &runtime,
@@ -349,7 +353,8 @@ fn baseline_property_cache_validates_once_per_site_and_mutation_misses_exactly()
             )
         })
         .unwrap();
-    let deadline = Instant::now() + Duration::from_secs(60);
+    let deadline =
+        Instant::now() + Duration::from_secs(if cfg!(rquickjs_sanitizer) { 300 } else { 60 });
     while Instant::now() < deadline {
         context.with(|ctx| {
             let globals = ctx.globals();
@@ -377,8 +382,8 @@ fn baseline_property_cache_validates_once_per_site_and_mutation_misses_exactly()
             rt,
             rquickjs_core::qjs::JSJitHelperId_JS_JIT_HELPER_SHAPE_GUARD
         ),
-        3,
-        "each get/put site must validate once, not once per loop iteration"
+        0,
+        "the shape/generation compare is inline; hits never cross a helper"
     );
     assert_eq!(
         helper_count(
@@ -401,9 +406,13 @@ fn baseline_property_cache_validates_once_per_site_and_mutation_misses_exactly()
     assert!(
         helper_count(
             rt,
-            rquickjs_core::qjs::JSJitHelperId_JS_JIT_HELPER_SHAPE_GUARD
-        ) > 3,
-        "shape mutation did not force revalidation/miss"
+            rquickjs_core::qjs::JSJitHelperId_JS_JIT_HELPER_GET_PROPERTY
+        ) > 0
+            && helper_count(
+                rt,
+                rquickjs_core::qjs::JSJitHelperId_JS_JIT_HELPER_SET_PROPERTY
+            ) > 0,
+        "shape mutation did not take the generic helper miss edge"
     );
 }
 
@@ -428,7 +437,8 @@ fn baseline_property_cache_accepts_bounded_polymorphic_shapes_under_stress_gc() 
             )
         })
         .unwrap();
-    let deadline = Instant::now() + Duration::from_secs(10);
+    let deadline =
+        Instant::now() + Duration::from_secs(if cfg!(rquickjs_sanitizer) { 50 } else { 10 });
     while Instant::now() < deadline {
         assert_eq!(
             context.with(|ctx| ctx.eval::<i32, _>("readx(a)")).unwrap(),
@@ -482,7 +492,8 @@ fn automatic_generic_call_entry_admits_the_bool_callee_to_tagged_tier2() {
             )
         })
         .unwrap();
-    let deadline = Instant::now() + Duration::from_secs(15);
+    let deadline =
+        Instant::now() + Duration::from_secs(if cfg!(rquickjs_sanitizer) { 75 } else { 15 });
     loop {
         context.with(|ctx| {
             assert_eq!(
